@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class AuditService {
+public class AuditService implements IAuditService {
 
     private final AuditEventRepository auditEventRepository;
     private final ObjectMapper objectMapper;
@@ -35,6 +35,7 @@ public class AuditService {
     /**
      * Logs transfer request initiation
      */
+    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logTransferRequest(String transferId, TransferRequest request) {
         Map<String, Object> metadata = new HashMap<>();
@@ -60,6 +61,7 @@ public class AuditService {
     /**
      * Logs policy evaluation result
      */
+    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logPolicyEvaluation(String transferId, PolicyEvaluationResult result) {
         Map<String, Object> metadata = new HashMap<>();
@@ -85,6 +87,16 @@ public class AuditService {
     /**
      * Logs state transition
      */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void logStateTransition(String transferId, TransferState from, TransferState to) {
+        logStateTransition(transferId, from, to, null);
+    }
+
+    /**
+     * Logs state transition with reason
+     */
+    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logStateTransition(String transferId, TransferState from, TransferState to, String reason) {
         Map<String, Object> metadata = new HashMap<>();
@@ -108,6 +120,7 @@ public class AuditService {
     /**
      * Logs transfer completion
      */
+    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logTransferCompletion(String transferId, TransferState finalState, String message) {
         Map<String, Object> metadata = new HashMap<>();

@@ -20,7 +20,7 @@ public class TimeBasedPolicyEvaluator implements PolicyEvaluator {
 
     private static final LocalTime BUSINESS_START = LocalTime.of(8, 0);
     //private static final LocalTime BUSINESS_END = LocalTime.of(18, 0);
-    private static final LocalTime BUSINESS_END = LocalTime.of(23, 0);
+    private static final LocalTime BUSINESS_END = LocalTime.of(23, 59);
 
     @Override
     public PolicyEvaluationResult evaluate(TransferRequest request) {
