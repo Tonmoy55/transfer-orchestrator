@@ -1,4 +1,4 @@
-package com.company.orchestrator.infrastructure.config;
+package com.company.orchestrator.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
