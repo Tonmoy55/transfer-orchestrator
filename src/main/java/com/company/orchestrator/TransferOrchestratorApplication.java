@@ -10,5 +10,4 @@ public class TransferOrchestratorApplication {
 		SpringApplication.run(TransferOrchestratorApplication.class, args);
 		System.out.println("Application is Running !!");
 	}
-
 }
