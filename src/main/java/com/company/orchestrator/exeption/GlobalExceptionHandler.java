@@ -1,5 +1,6 @@
 package com.company.orchestrator.exeption;
 
+import com.company.orchestrator.api.dto.ApiResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,7 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -19,49 +23,94 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<ValidationErrorDetails>> handleValidationException(MethodArgumentNotValidException ex) {
         log.warn("Validation error: {}", ex.getMessage());
 
-        String details = ex.getBindingResult()
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            fieldErrors.put(error.getField(), error.getDefaultMessage())
+        );
+
+        String errorMessage = ex.getBindingResult()
             .getFieldErrors()
             .stream()
             .map(error -> error.getField() + ": " + error.getDefaultMessage())
             .collect(Collectors.joining(", "));
 
-        ErrorResponse error = ErrorResponse.builder()
-            .status(HttpStatus.BAD_REQUEST.value())
-            .message("Validation Error")
-            .details(details)
+        ValidationErrorDetails details = ValidationErrorDetails.builder()
+            .fieldErrors(fieldErrors)
+            .errorCount(fieldErrors.size())
+            .build();
+
+        ApiResponse<ValidationErrorDetails> response = ApiResponse.<ValidationErrorDetails>builder()
+            .statusCode(HttpStatus.BAD_REQUEST.value())
+            .message("Validation failed: " + errorMessage)
+            .data(details)
+            .success(false)
             .timestamp(LocalDateTime.now())
             .build();
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<ErrorDetails>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("Illegal argument: {}", ex.getMessage());
+
+        ErrorDetails details = ErrorDetails.builder()
+            .errorType("IllegalArgumentException")
+            .errorDetails(ex.getMessage())
+            .build();
+
+        ApiResponse<ErrorDetails> response = ApiResponse.<ErrorDetails>builder()
+            .statusCode(HttpStatus.BAD_REQUEST.value())
+            .message(ex.getMessage())
+            .data(details)
+            .success(false)
+            .timestamp(LocalDateTime.now())
+            .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    public ResponseEntity<ApiResponse<ErrorDetails>> handleGenericException(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
 
-        ErrorResponse error = ErrorResponse.builder()
-            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-            .message("Internal Server Error")
-            .details(ex.getMessage())
+        ErrorDetails details = ErrorDetails.builder()
+            .errorType(ex.getClass().getSimpleName())
+            .errorDetails(ex.getMessage())
+            .build();
+
+        ApiResponse<ErrorDetails> response = ApiResponse.<ErrorDetails>builder()
+            .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+            .message("Internal server error occurred")
+            .data(details)
+            .success(false)
             .timestamp(LocalDateTime.now())
             .build();
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class ErrorResponse {
-        private int status;
-        private String message;
-        private String details;
-        private LocalDateTime timestamp;
+    public static class ValidationErrorDetails {
+        private Map<String, String> fieldErrors;
+        private int errorCount;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ErrorDetails {
+        private String errorType;
+        private String errorDetails;
     }
 }
 

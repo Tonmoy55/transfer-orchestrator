@@ -1,5 +1,7 @@
 package com.company.orchestrator.api;
 
+import com.company.orchestrator.api.dto.ApiResponse;
+import com.company.orchestrator.api.util.ResponseEntityBuilder;
 import com.company.orchestrator.domain.dto.TransferAnalyticsDto;
 import com.company.orchestrator.domain.enums.TransferState;
 import com.company.orchestrator.infrastructure.persistence.repository.TransferRepository;
@@ -29,7 +31,7 @@ public class AnalyticsController {
      * Gets transfer analytics and statistics
      */
     @GetMapping("/transfers")
-    public ResponseEntity<TransferAnalyticsDto> getTransferAnalytics() {
+    public ResponseEntity<ApiResponse<TransferAnalyticsDto>> getTransferAnalytics() {
         log.debug("Getting transfer analytics");
 
         Long totalTransfers = transferRepository.count();
@@ -58,7 +60,7 @@ public class AnalyticsController {
             .transfersByState(transfersByState)
             .build();
 
-        return ResponseEntity.ok(analytics);
+        return ResponseEntityBuilder.ok(analytics, "Analytics retrieved successfully");
     }
 }
 

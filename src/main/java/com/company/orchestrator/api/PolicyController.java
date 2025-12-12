@@ -1,5 +1,7 @@
 package com.company.orchestrator.api;
 
+import com.company.orchestrator.api.dto.ApiResponse;
+import com.company.orchestrator.api.util.ResponseEntityBuilder;
 import com.company.orchestrator.domain.dto.TransferRequestDto;
 import com.company.orchestrator.domain.model.PolicyEvaluationResult;
 import com.company.orchestrator.domain.model.TransferRequest;
@@ -27,7 +29,7 @@ public class PolicyController {
      * Evaluates policies for a transfer request (test endpoint)
      */
     @PostMapping("/evaluate")
-    public ResponseEntity<PolicyEvaluationResult> evaluatePolicy(
+    public ResponseEntity<ApiResponse<PolicyEvaluationResult>> evaluatePolicy(
             @Valid @RequestBody TransferRequestDto requestDto) {
 
         log.info("Evaluating policies for test request");
@@ -45,19 +47,23 @@ public class PolicyController {
 
         PolicyEvaluationResult result = policyEvaluationService.evaluateAll(request);
 
-        return ResponseEntity.ok(result);
+        String message = result.isAllowed() ?
+            "Policy evaluation passed" :
+            "Policy evaluation failed: " + result.getReason();
+
+        return ResponseEntityBuilder.ok(result, message);
     }
 
     /**
      * Lists available policy types
      */
     @GetMapping("/types")
-    public ResponseEntity<List<String>> getPolicyTypes() {
+    public ResponseEntity<ApiResponse<List<String>>> getPolicyTypes() {
         log.debug("Getting available policy types");
 
         List<String> policyTypes = policyEvaluationService.getAvailablePolicyTypes();
 
-        return ResponseEntity.ok(policyTypes);
+        return ResponseEntityBuilder.ok(policyTypes, "Policy types retrieved successfully");
     }
 }
 

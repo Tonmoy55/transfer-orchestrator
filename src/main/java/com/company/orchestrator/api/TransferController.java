@@ -1,5 +1,7 @@
 package com.company.orchestrator.api;
 
+import com.company.orchestrator.api.dto.ApiResponse;
+import com.company.orchestrator.api.util.ResponseEntityBuilder;
 import com.company.orchestrator.domain.dto.TransferRequestDto;
 import com.company.orchestrator.domain.dto.TransferStatusDto;
 import com.company.orchestrator.domain.model.*;
@@ -11,7 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,7 +33,7 @@ public class TransferController {
      * Initiates a new transfer
      */
     @PostMapping
-    public ResponseEntity<TransferResponse> initiateTransfer(
+    public ResponseEntity<ApiResponse<TransferResponse>> initiateTransfer(
             @Valid @RequestBody TransferRequestDto requestDto) {
 
         log.info("Received transfer request for asset: {}", requestDto.getAssetId());
@@ -51,9 +52,9 @@ public class TransferController {
         TransferResponse response = transferOrchestrator.initiateTransfer(request);
 
         if (response.isSuccess()) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+            return ResponseEntityBuilder.accepted(response, "Transfer initiated successfully");
         } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            return ResponseEntityBuilder.badRequest(response, "Transfer initiation failed: " + response.getMessage());
         }
     }
 
@@ -61,7 +62,7 @@ public class TransferController {
      * Gets transfer status by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<TransferStatusDto> getTransferStatus(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<TransferStatusDto>> getTransferStatus(@PathVariable String id) {
         log.debug("Getting transfer status for ID: {}", id);
 
         try {
@@ -76,10 +77,10 @@ public class TransferController {
                 .edcTransferProcessId(status.getEdcTransferProcessId())
                 .build();
 
-            return ResponseEntity.ok(dto);
+            return ResponseEntityBuilder.ok(dto, "Transfer status retrieved successfully");
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntityBuilder.notFound("Transfer not found with ID: " + id);
         }
     }
 
@@ -87,14 +88,14 @@ public class TransferController {
      * Cancels a transfer
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelTransfer(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<Void>> cancelTransfer(@PathVariable String id) {
         log.info("Cancelling transfer: {}", id);
 
         try {
             transferOrchestrator.cancelTransfer(id);
-            return ResponseEntity.noContent().build();
+            return ResponseEntityBuilder.ok(null, "Transfer cancelled successfully");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntityBuilder.notFound("Transfer not found with ID: " + id);
         }
     }
 
@@ -102,18 +103,18 @@ public class TransferController {
      * Gets audit log for a transfer
      */
     @GetMapping("/{id}/audit")
-    public ResponseEntity<List<AuditEvent>> getTransferAuditLog(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<List<AuditEvent>>> getTransferAuditLog(@PathVariable String id) {
         log.debug("Getting audit log for transfer: {}", id);
 
         List<AuditEvent> auditLog = transferOrchestrator.getTransferAuditLog(id);
-        return ResponseEntity.ok(auditLog);
+        return ResponseEntityBuilder.ok(auditLog, "Audit log retrieved successfully");
     }
 
     /**
      * Lists all transfers with pagination
      */
     @GetMapping
-    public ResponseEntity<Page<TransferStatusDto>> listTransfers(
+    public ResponseEntity<ApiResponse<Page<TransferStatusDto>>> listTransfers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "lastUpdated") String sortBy,
@@ -138,7 +139,7 @@ public class TransferController {
             .edcTransferProcessId(status.getEdcTransferProcessId())
             .build());
 
-        return ResponseEntity.ok(dtos);
+        return ResponseEntityBuilder.ok(dtos, "Transfers retrieved successfully");
     }
 }
 
