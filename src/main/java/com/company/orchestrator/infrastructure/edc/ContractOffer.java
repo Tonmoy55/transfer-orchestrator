@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ContractOffer {
+    private String transferId;
     private String offerId;
     private String assetId;
     private String providerId;

@@ -2,6 +2,7 @@ package com.company.orchestrator.domain.service;
 
 import com.company.orchestrator.domain.enums.TransferState;
 import com.company.orchestrator.domain.model.*;
+import com.company.orchestrator.exeption.CancelTransferException;
 import com.company.orchestrator.infrastructure.edc.*;
 import com.company.orchestrator.infrastructure.persistence.entity.TransferEntity;
 import com.company.orchestrator.infrastructure.persistence.repository.TransferRepository;
@@ -9,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,12 +47,13 @@ public class TransferOrchestrator {
             TransferEntity transfer = createTransferEntity(request);
             transfer = transferRepository.save(transfer);
 
-            String transferId = transfer.getId(); // Get the generated ID
+            String transferId = transfer.getId();
+            request.setTransferId(transferId);
 
             log.info("Transfer created with ID: {}", transferId);
 
             // Step 2: Log request
-            auditService.logTransferRequest(transferId, request);
+            auditService.logTransferRequest(request);
 
             // Step 3: Evaluate policies
             transfer.setCurrentState(TransferState.POLICY_EVALUATION);
@@ -89,7 +90,7 @@ public class TransferOrchestrator {
             auditService.logStateTransition(transferId, TransferState.POLICY_EVALUATION,
                 TransferState.APPROVED, "All policies satisfied");
 
-            // Step 5: Initiate async transfer workflow
+            // Step 5: Initiate async transfer workflow using Virtual Thread
             executeTransferWorkflowAsync(transferId, request);
 
             log.info("Transfer approved and workflow started: {}", transferId);
@@ -145,6 +146,10 @@ public class TransferOrchestrator {
 
         TransferState previousState = transfer.getCurrentState();
 
+        if (previousState.equals(TransferState.COMPLETED)) {
+            throw new CancelTransferException("Cannot cancel a completed transfer. Transfer ID: " + transferId);
+        }
+
         // Terminate EDC transfer if exists
         if (transfer.getEdcTransferProcessId() != null) {
             try {
@@ -184,18 +189,23 @@ public class TransferOrchestrator {
     }
 
     /**
-     * Async method to execute transfer workflow
+     * Async method to execute transfer workflow using Virtual Thread
+     * Virtual threads provide true asynchronous execution without blocking
      */
-    @Async("taskExecutor")
     public void executeTransferWorkflowAsync(String transferId, TransferRequest request) {
-        log.info("Starting async transfer workflow: {}", transferId);
+        log.info("Starting async transfer workflow for transferId: {}", transferId);
 
-        try {
-            executeTransferWorkflow(transferId, request, 0);
-        } catch (Exception e) {
-            log.error("Fatal error in transfer workflow: {}", transferId, e);
-            markTransferAsFailed(transferId, "Workflow execution error: " + e.getMessage());
-        }
+        // Start a new Virtual Thread for the workflow
+        Thread.ofVirtual().start(() -> {
+            try {
+                executeTransferWorkflow(transferId, request, 0);
+            } catch (Exception e) {
+                log.error("Fatal error in transfer workflow: {}", transferId, e);
+                markTransferAsFailed(transferId, "Workflow execution error: " + e.getMessage());
+            }
+        });
+
+        log.debug("Virtual Thread started for transfer: {}", transferId);
     }
 
     /**
@@ -204,6 +214,8 @@ public class TransferOrchestrator {
     @Transactional
     protected void executeTransferWorkflow(String transferId, TransferRequest request, int retryCount) {
         try {
+            //First wait for a short duration to ensure DB transaction is committed for the transfer entity
+            Thread.sleep(2000);
             TransferEntity transfer = transferRepository.findById(transferId)
                 .orElseThrow(() -> new IllegalArgumentException("Transfer not found: " + transferId));
 
@@ -211,15 +223,17 @@ public class TransferOrchestrator {
             log.debug("Starting contract negotiation for transfer: {}", transferId);
             transfer.setCurrentState(TransferState.CONTRACT_NEGOTIATION);
 
+            transferRepository.save(transfer);
             auditService.logStateTransition(transferId, TransferState.APPROVED,
                 TransferState.CONTRACT_NEGOTIATION, "Starting contract negotiation");
 
             ContractOffer offer = ContractOffer.builder()
-                .assetId(request.getAssetId())
-                .providerId(request.getProviderId())
-                .consumerId(request.getConsumerId())
-                .policyId("default-policy")
-                .build();
+                                               .transferId(transferId)
+                                               .assetId(request.getAssetId())
+                                               .providerId(request.getProviderId())
+                                               .consumerId(request.getConsumerId())
+                                               .policyId("default-policy")
+                                               .build();
 
             ContractNegotiationResult negotiationResult = edcConnectorClient.negotiateContract(offer);
 
@@ -230,6 +244,7 @@ public class TransferOrchestrator {
             transfer.setEdcContractAgreementId(negotiationResult.getAgreementId());
             transfer.setCurrentState(TransferState.NEGOTIATED);
 
+            transferRepository.save(transfer);
             auditService.logStateTransition(transferId, TransferState.CONTRACT_NEGOTIATION,
                 TransferState.NEGOTIATED, "Contract negotiated successfully");
 
@@ -237,11 +252,11 @@ public class TransferOrchestrator {
             log.debug("Initiating EDC transfer for: {}", transferId);
             transfer.setCurrentState(TransferState.TRANSFER_IN_PROGRESS);
 
+            transferRepository.save(transfer);
             auditService.logStateTransition(transferId, TransferState.NEGOTIATED,
                 TransferState.TRANSFER_IN_PROGRESS, "Starting data transfer");
 
-            TransferProcessResult processResult = edcConnectorClient.initiateTransfer(
-                negotiationResult.getAgreementId(), request);
+            TransferProcessResult processResult = edcConnectorClient.initiateTransfer(negotiationResult.getAgreementId(), request);
 
             if (!processResult.isSuccess()) {
                 throw new RuntimeException("Transfer initiation failed: " + processResult.getMessage());
@@ -250,7 +265,7 @@ public class TransferOrchestrator {
             transfer.setEdcTransferProcessId(processResult.getTransferProcessId());
 
             // Step 3: Monitor Transfer (simplified - in production would poll EDC)
-            Thread.sleep(2000); // Simulate transfer time
+            Thread.sleep(30000); // Simulate transfer time
 
             TransferProcessState edcState = edcConnectorClient.getTransferState(
                 processResult.getTransferProcessId());
@@ -259,17 +274,18 @@ public class TransferOrchestrator {
                 transfer.setCurrentState(TransferState.COMPLETED);
                 transfer.setMessage("Transfer completed successfully");
 
+                transferRepository.save(transfer);
                 auditService.logTransferCompletion(transferId, TransferState.COMPLETED,
                     "Transfer completed successfully");
 
-                log.info("Transfer completed successfully: {}", transferId);
+                log.info("Transfer completed successfully. transferId: {}", transferId);
 
             } else if (edcState == TransferProcessState.ERROR) {
                 throw new RuntimeException("EDC transfer failed");
             }
 
         } catch (Exception e) {
-            log.error("Error in transfer workflow (attempt {}): {}", retryCount + 1, transferId, e);
+            log.error("Error in transfer workflow (attempt {}): transferId: {} , Exception:{}", retryCount + 1, transferId, e.getMessage());
 
             if (retryCount < MAX_RETRY_ATTEMPTS) {
                 handleRetry(transferId, request, retryCount, e.getMessage());
@@ -287,7 +303,7 @@ public class TransferOrchestrator {
         int nextRetry = retryCount + 1;
         long backoffMs = INITIAL_BACKOFF_MS * (long) Math.pow(2, retryCount);
 
-        log.info("Scheduling retry {} for transfer {} after {}ms", nextRetry, transferId, backoffMs);
+        log.info("Scheduling retry {} for transferId: {} after {}ms", nextRetry, transferId, backoffMs);
 
         transferRepository.findById(transferId).ifPresent(transfer ->
             transfer.setRetryCount(nextRetry)

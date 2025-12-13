@@ -22,15 +22,15 @@ public class MockEdcConnectorClient implements EdcConnectorClient {
 
     @Override
     public ContractNegotiationResult negotiateContract(ContractOffer offer) {
-        log.info("Mock EDC: Negotiating contract for asset: {}", offer.getAssetId());
+        log.info("Mock EDC: Negotiating contract for transferId: {}, asset: {}", offer.getTransferId(), offer.getAssetId());
 
         // Simulate successful negotiation
         String negotiationId = UUID.randomUUID().toString();
-        String agreementId = "agreement-" + UUID.randomUUID().toString();
+        String agreementId = "agreement-" + UUID.randomUUID();
 
         agreementIds.put(negotiationId, agreementId);
 
-        log.debug("Mock EDC: Contract negotiation successful. Agreement ID: {}", agreementId);
+        log.debug("Mock EDC: Contract negotiation successful. Transfer ID: {}, Agreement ID: {}", offer.getTransferId(), agreementId);
 
         return ContractNegotiationResult.builder()
             .negotiationId(negotiationId)
@@ -42,13 +42,13 @@ public class MockEdcConnectorClient implements EdcConnectorClient {
 
     @Override
     public TransferProcessResult initiateTransfer(String agreementId, TransferRequest request) {
-        log.info("Mock EDC: Initiating transfer for agreement: {}", agreementId);
+        log.info("Mock EDC: Initiating transfer for transferId: {}, agreement: {}", request.getTransferId(), agreementId);
 
         // Simulate successful transfer initiation
-        String transferProcessId = "transfer-" + UUID.randomUUID().toString();
+        String transferProcessId = "transfer-" + UUID.randomUUID();
         transferStates.put(transferProcessId, TransferProcessState.STARTED);
 
-        log.debug("Mock EDC: Transfer initiated. Process ID: {}", transferProcessId);
+        log.debug("Mock EDC: Transfer initiated. TransferId: {}, Process ID: {}", request.getTransferId(), transferProcessId);
 
         return TransferProcessResult.builder()
             .transferProcessId(transferProcessId)
@@ -70,6 +70,7 @@ public class MockEdcConnectorClient implements EdcConnectorClient {
         if (state == TransferProcessState.STARTED) {
             // Automatically mark as completed after first check
             transferStates.put(transferProcessId, TransferProcessState.COMPLETED);
+            state = transferStates.getOrDefault(transferProcessId, TransferProcessState.COMPLETED);
         }
 
         return state;
