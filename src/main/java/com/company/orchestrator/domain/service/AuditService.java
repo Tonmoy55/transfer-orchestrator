@@ -37,7 +37,7 @@ public class AuditService implements IAuditService {
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void logTransferRequest(String transferId, TransferRequest request) {
+    public void logTransferRequest(TransferRequest request) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("consumerId", request.getConsumerId());
         metadata.put("providerId", request.getProviderId());
@@ -45,7 +45,7 @@ public class AuditService implements IAuditService {
         metadata.put("dataType", request.getDataType());
 
         AuditEventEntity event = AuditEventEntity.builder()
-            .transferId(transferId)
+            .transferId(request.getTransferId())
             .eventType("TRANSFER_REQUESTED")
             .actor(request.getConsumerId())
             .action("REQUEST_TRANSFER")
@@ -55,7 +55,7 @@ public class AuditService implements IAuditService {
             .build();
 
         auditEventRepository.save(event);
-        log.debug("Audit: Transfer requested - ID: {}", transferId);
+        log.debug("Audit: Transfer requested - ID: {}", request.getTransferId());
     }
 
     /**
@@ -138,7 +138,7 @@ public class AuditService implements IAuditService {
             .build();
 
         auditEventRepository.save(event);
-        log.info("Audit: Transfer completed - ID: {}, State: {}", transferId, finalState);
+        log.info("Audit: Transfer completed. transferId: {}, State: {}", transferId, finalState);
     }
 
     /**
