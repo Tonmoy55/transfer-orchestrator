@@ -15,6 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TransferRequest {
+    private String transferId;
     private String consumerId;
     private String providerId;
     private String assetId;

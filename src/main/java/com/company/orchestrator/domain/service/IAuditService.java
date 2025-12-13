@@ -15,10 +15,9 @@ public interface IAuditService {
 
     /**
      * Logs transfer request initiation
-     * @param transferId The transfer ID
      * @param request The transfer request details
      */
-    void logTransferRequest(String transferId, TransferRequest request);
+    void logTransferRequest(TransferRequest request);
 
     /**
      * Logs policy evaluation result
@@ -60,6 +59,7 @@ public interface IAuditService {
      */
     List<AuditEvent> getAuditTrail(String transferId);
 
+    //TODO: Add method for generating compliance reports. As this is not in the requirement doc, leaving it commented for now.
 //    ComplianceReport generateComplianceReport(DateRange range);
 }
 
