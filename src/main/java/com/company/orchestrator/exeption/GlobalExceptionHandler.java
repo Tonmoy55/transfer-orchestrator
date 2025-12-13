@@ -1,6 +1,7 @@
 package com.company.orchestrator.exeption;
 
 import com.company.orchestrator.api.dto.ApiResponse;
+import com.company.orchestrator.api.util.ResponseEntityBuilder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,6 +76,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(CancelTransferException.class)
+    public ResponseEntity<ApiResponse<ErrorDetails>> cancelTransferException(CancelTransferException ex) {
+        log.warn("CancelTransferException: {}", ex.getMessage());
+
+        ErrorDetails details = ErrorDetails.builder()
+                                           .errorType("CancelTransferException")
+                                           .errorDetails(ex.getMessage())
+                                           .build();
+
+        ApiResponse<ErrorDetails> response = ApiResponse.<ErrorDetails>builder()
+                                                        .statusCode(HttpStatus.EXPECTATION_FAILED.value())
+                                                        .message(ex.getMessage())
+                                                        .data(details)
+                                                        .success(false)
+                                                        .timestamp(LocalDateTime.now())
+                                                        .build();
+
+        return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<ErrorDetails>> handleGenericException(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
@@ -94,6 +115,18 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNoResourceFound(NoResourceFoundException ex) {
+        // Silently ignore favicon requests
+        if (ex.getMessage().contains("favicon.ico")) {
+            return ResponseEntity.notFound().build();
+        }
+
+        log.warn("Resource not found: {}", ex.getMessage());
+        return ResponseEntityBuilder.notFound(ex.getMessage());
+    }
+
 
     @Data
     @NoArgsConstructor
