@@ -197,6 +197,8 @@ public class AuditService implements IAuditService {
             }
         } catch (JsonProcessingException e) {
             log.warn("Failed to deserialize metadata for audit event: {}", entity.getId());
+        } catch (Exception e) {
+            log.error("Unexpected error during metadata deserialization for audit event: {}", entity.getId(), e);
         }
 
         return AuditEvent.builder()
@@ -214,7 +216,7 @@ public class AuditService implements IAuditService {
     private String serializeMetadata(Map<String, Object> metadata) {
         try {
             return objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             log.error("Failed to serialize audit metadata", e);
             return "{}";
         }

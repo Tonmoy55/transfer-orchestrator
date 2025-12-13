@@ -26,13 +26,12 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class TransferOrchestrator {
 
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+    private static final int INITIAL_BACKOFF_MS = 1000;
     private final TransferRepository transferRepository;
     private final PolicyEvaluationService policyEvaluationService;
     private final AuditService auditService;
     private final EdcConnectorClient edcConnectorClient;
-
-    private static final int MAX_RETRY_ATTEMPTS = 3;
-    private static final int INITIAL_BACKOFF_MS = 1000;
 
     /**
      * Initiates a data transfer with policy evaluation
@@ -40,7 +39,7 @@ public class TransferOrchestrator {
     @Transactional
     public TransferResponse initiateTransfer(TransferRequest request) {
         log.info("Initiating transfer: Consumer={}, Asset={}",
-            request.getConsumerId(), request.getAssetId());
+                request.getConsumerId(), request.getAssetId());
 
         try {
             // Step 1: Create transfer entity (without ID - let JPA generate it)
@@ -58,7 +57,7 @@ public class TransferOrchestrator {
             // Step 3: Evaluate policies
             transfer.setCurrentState(TransferState.POLICY_EVALUATION);
             auditService.logStateTransition(transferId, TransferState.REQUESTED,
-                TransferState.POLICY_EVALUATION, "Starting policy evaluation");
+                    TransferState.POLICY_EVALUATION, "Starting policy evaluation");
 
             PolicyEvaluationResult policyResult = policyEvaluationService.evaluateAll(request);
             auditService.logPolicyEvaluation(transferId, policyResult);
@@ -70,7 +69,7 @@ public class TransferOrchestrator {
                 // Final save at transaction commit
 
                 auditService.logStateTransition(transferId, TransferState.POLICY_EVALUATION,
-                    TransferState.DENIED, policyResult.getReason());
+                        TransferState.DENIED, policyResult.getReason());
 
                 log.warn("Transfer denied due to policy violations: {}", transferId);
 
@@ -88,7 +87,7 @@ public class TransferOrchestrator {
             // Final save at transaction commit
 
             auditService.logStateTransition(transferId, TransferState.POLICY_EVALUATION,
-                TransferState.APPROVED, "All policies satisfied");
+                    TransferState.APPROVED, "All policies satisfied");
 
             // Step 5: Initiate async transfer workflow using Virtual Thread
             executeTransferWorkflowAsync(transferId, request);
@@ -122,16 +121,16 @@ public class TransferOrchestrator {
         log.debug("Getting transfer status: {}", transferId);
 
         TransferEntity transfer = transferRepository.findById(transferId)
-            .orElseThrow(() -> new IllegalArgumentException("Transfer not found: " + transferId));
+                                                    .orElseThrow(() -> new IllegalArgumentException("Transfer not found: " + transferId));
 
         return TransferStatus.builder()
-            .transferId(transfer.getId())
-            .currentState(transfer.getCurrentState())
-            .message(transfer.getMessage())
-            .lastUpdated(transfer.getLastUpdated())
-            .retryCount(transfer.getRetryCount())
-            .edcTransferProcessId(transfer.getEdcTransferProcessId())
-            .build();
+                             .transferId(transfer.getId())
+                             .currentState(transfer.getCurrentState())
+                             .message(transfer.getMessage())
+                             .lastUpdated(transfer.getLastUpdated())
+                             .retryCount(transfer.getRetryCount())
+                             .edcTransferProcessId(transfer.getEdcTransferProcessId())
+                             .build();
     }
 
     /**
@@ -142,7 +141,7 @@ public class TransferOrchestrator {
         log.info("Cancelling transfer: {}", transferId);
 
         TransferEntity transfer = transferRepository.findById(transferId)
-            .orElseThrow(() -> new IllegalArgumentException("Transfer not found: " + transferId));
+                                                    .orElseThrow(() -> new IllegalArgumentException("Transfer not found: " + transferId));
 
         TransferState previousState = transfer.getCurrentState();
 
@@ -164,7 +163,7 @@ public class TransferOrchestrator {
         transferRepository.save(transfer);
 
         auditService.logStateTransition(transferId, previousState,
-            TransferState.CANCELLED, "Transfer cancelled by user");
+                TransferState.CANCELLED, "Transfer cancelled by user");
 
         log.info("Transfer cancelled successfully: {}", transferId);
     }
@@ -185,7 +184,7 @@ public class TransferOrchestrator {
         log.debug("Listing transfers with pagination: {}", pageable);
 
         return transferRepository.findAll(pageable)
-            .map(this::toTransferStatus);
+                                 .map(this::toTransferStatus);
     }
 
     /**
@@ -225,7 +224,7 @@ public class TransferOrchestrator {
 
             transferRepository.save(transfer);
             auditService.logStateTransition(transferId, TransferState.APPROVED,
-                TransferState.CONTRACT_NEGOTIATION, "Starting contract negotiation");
+                    TransferState.CONTRACT_NEGOTIATION, "Starting contract negotiation");
 
             ContractOffer offer = ContractOffer.builder()
                                                .transferId(transferId)
@@ -246,7 +245,7 @@ public class TransferOrchestrator {
 
             transferRepository.save(transfer);
             auditService.logStateTransition(transferId, TransferState.CONTRACT_NEGOTIATION,
-                TransferState.NEGOTIATED, "Contract negotiated successfully");
+                    TransferState.NEGOTIATED, "Contract negotiated successfully");
 
             // Step 2: Initiate Transfer
             log.debug("Initiating EDC transfer for: {}", transferId);
@@ -254,7 +253,7 @@ public class TransferOrchestrator {
 
             transferRepository.save(transfer);
             auditService.logStateTransition(transferId, TransferState.NEGOTIATED,
-                TransferState.TRANSFER_IN_PROGRESS, "Starting data transfer");
+                    TransferState.TRANSFER_IN_PROGRESS, "Starting data transfer");
 
             TransferProcessResult processResult = edcConnectorClient.initiateTransfer(negotiationResult.getAgreementId(), request);
 
@@ -268,7 +267,7 @@ public class TransferOrchestrator {
             Thread.sleep(30000); // Simulate transfer time
 
             TransferProcessState edcState = edcConnectorClient.getTransferState(
-                processResult.getTransferProcessId());
+                    processResult.getTransferProcessId());
 
             if (edcState == TransferProcessState.COMPLETED) {
                 transfer.setCurrentState(TransferState.COMPLETED);
@@ -276,7 +275,7 @@ public class TransferOrchestrator {
 
                 transferRepository.save(transfer);
                 auditService.logTransferCompletion(transferId, TransferState.COMPLETED,
-                    "Transfer completed successfully");
+                        "Transfer completed successfully");
 
                 log.info("Transfer completed successfully. transferId: {}", transferId);
 
@@ -306,7 +305,7 @@ public class TransferOrchestrator {
         log.info("Scheduling retry {} for transferId: {} after {}ms", nextRetry, transferId, backoffMs);
 
         transferRepository.findById(transferId).ifPresent(transfer ->
-            transfer.setRetryCount(nextRetry)
+                transfer.setRetryCount(nextRetry)
         );
 
         auditService.logRetryAttempt(transferId, nextRetry, reason);
@@ -335,38 +334,38 @@ public class TransferOrchestrator {
             transferRepository.save(transfer);
 
             auditService.logStateTransition(transferId, previousState,
-                TransferState.FAILED, reason);
+                    TransferState.FAILED, reason);
             auditService.logTransferCompletion(transferId, TransferState.FAILED, reason);
         }
     }
 
     private TransferEntity createTransferEntity(TransferRequest request) {
         return TransferEntity.builder()
-            // .id() - Don't set ID, let JPA generate it
-            .consumerId(request.getConsumerId())
-            .providerId(request.getProviderId())
-            .assetId(request.getAssetId())
-            .dataType(request.getDataType())
-            .currentState(TransferState.REQUESTED)
-            .message("Transfer requested")
-            .retryCount(0)
-            .consumerRegion(request.getConsumerRegion())
-            .consumerCertificationLevel(request.getConsumerCertificationLevel())
-            .usagePurpose(request.getUsagePurpose())
-            .createdAt(LocalDateTime.now())
-            .lastUpdated(LocalDateTime.now())
-            .build();
+                             // .id() - Don't set ID, let JPA generate it
+                             .consumerId(request.getConsumerId())
+                             .providerId(request.getProviderId())
+                             .assetId(request.getAssetId())
+                             .dataType(request.getDataType())
+                             .currentState(TransferState.REQUESTED)
+                             .message("Transfer requested")
+                             .retryCount(0)
+                             .consumerRegion(request.getConsumerRegion())
+                             .consumerCertificationLevel(request.getConsumerCertificationLevel())
+                             .usagePurpose(request.getUsagePurpose())
+                             .createdAt(LocalDateTime.now())
+                             .lastUpdated(LocalDateTime.now())
+                             .build();
     }
 
     private TransferStatus toTransferStatus(TransferEntity entity) {
         return TransferStatus.builder()
-            .transferId(entity.getId())
-            .currentState(entity.getCurrentState())
-            .message(entity.getMessage())
-            .lastUpdated(entity.getLastUpdated())
-            .retryCount(entity.getRetryCount())
-            .edcTransferProcessId(entity.getEdcTransferProcessId())
-            .build();
+                             .transferId(entity.getId())
+                             .currentState(entity.getCurrentState())
+                             .message(entity.getMessage())
+                             .lastUpdated(entity.getLastUpdated())
+                             .retryCount(entity.getRetryCount())
+                             .edcTransferProcessId(entity.getEdcTransferProcessId())
+                             .build();
     }
 }
 
