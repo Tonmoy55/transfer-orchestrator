@@ -389,7 +389,7 @@ curl -X POST http://localhost:9090/api/v1/policies/evaluate \
 
 ---
 
-### 8. List Policy Types
+### 8. Get Available Policy Types
 
 Retrieves all available policy types.
 
@@ -409,6 +409,42 @@ Retrieves all available policy types.
 **cURL Example**:
 ```bash
 curl http://localhost:9090/api/v1/policies/types
+```
+
+---
+
+### 9. List All Policies
+
+Retrieves all configured policies from the orchestrator, including full metadata and configuration.
+
+**Endpoint**: `GET /api/v1/policies`
+
+**Success Response** (200 OK):
+```json
+{
+  "statusCode": 200,
+  "message": "Policies retrieved successfully",
+  "success": true,
+  "data": [
+    {
+      "id": "1",
+      "name": "Time based EU only",
+      "type": "TIME_BASED",
+      "description": "Allow only in business hours",
+      "configuration": "{\"from\":\"08:00\",\"to\":\"18:00\"}",
+      "active": true
+    }
+  ]
+}
+```
+
+**Notes**:
+- `type` values match the `PolicyType` enum and the values returned by `GET /api/v1/policies/types`.
+- `configuration` is a JSON string whose structure depends on the specific policy type (e.g. time ranges, regions, rate limits).
+
+**cURL Example**:
+```bash
+curl http://localhost:9090/api/v1/policies
 ```
 
 ---
@@ -557,10 +593,17 @@ Import this collection into Postman:
           }
         },
         {
-          "name": "List Policy Types",
+          "name": "Get Available Policy Types",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/policies/types"
+          }
+        },
+        {
+          "name": "List All Policies",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/policies"
           }
         }
       ]
@@ -659,4 +702,3 @@ curl -X POST http://localhost:9090/api/v1/transfers \
     "usagePurpose": "MARKETING"
   }'
 ```
-

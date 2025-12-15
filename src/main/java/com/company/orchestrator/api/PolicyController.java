@@ -1,11 +1,13 @@
 package com.company.orchestrator.api;
 
 import com.company.orchestrator.api.dto.ApiResponse;
+import com.company.orchestrator.api.dto.PolicyDto;
 import com.company.orchestrator.api.util.ResponseEntityBuilder;
 import com.company.orchestrator.domain.dto.TransferRequestDto;
 import com.company.orchestrator.domain.model.PolicyEvaluationResult;
 import com.company.orchestrator.domain.model.TransferRequest;
 import com.company.orchestrator.domain.service.PolicyEvaluationService;
+import com.company.orchestrator.domain.service.PolicyQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ import java.util.List;
 public class PolicyController {
 
     private final PolicyEvaluationService policyEvaluationService;
+    private final PolicyQueryService policyQueryService;
 
     /**
      * Evaluates policies for a transfer request (test endpoint)
@@ -65,5 +68,16 @@ public class PolicyController {
 
         return ResponseEntityBuilder.ok(policyTypes, "Policy types retrieved successfully");
     }
-}
 
+    /**
+     * Lists all configured policies with full details.
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<PolicyDto>>> getAllPolicies() {
+        log.debug("Getting all policies");
+
+        List<PolicyDto> policies = policyQueryService.getAllPolicies();
+
+        return ResponseEntityBuilder.ok(policies, "Policies retrieved successfully");
+    }
+}

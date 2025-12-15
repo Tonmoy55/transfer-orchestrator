@@ -206,6 +206,26 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "getAllPolicies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/policies/types",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"policies",
+								"types"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}

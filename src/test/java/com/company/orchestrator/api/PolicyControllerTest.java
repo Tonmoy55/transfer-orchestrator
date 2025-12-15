@@ -1,8 +1,11 @@
 package com.company.orchestrator.api;
 
+import com.company.orchestrator.api.dto.PolicyDto;
 import com.company.orchestrator.domain.dto.TransferRequestDto;
+import com.company.orchestrator.domain.enums.PolicyType;
 import com.company.orchestrator.domain.model.PolicyEvaluationResult;
 import com.company.orchestrator.domain.service.PolicyEvaluationService;
+import com.company.orchestrator.domain.service.PolicyQueryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +43,9 @@ class PolicyControllerTest {
 
     @Mock
     private PolicyEvaluationService policyEvaluationService;
+
+    @Mock
+    private PolicyQueryService policyQueryService;
 
     @InjectMocks
     private PolicyController policyController;
@@ -230,5 +236,34 @@ class PolicyControllerTest {
 
         verify(policyEvaluationService, times(1)).evaluateAll(any());
     }
-}
 
+    @Test
+    @DisplayName("Should list all policies with full details")
+    void shouldListAllPoliciesWithFullDetails() throws Exception {
+        PolicyDto policy = PolicyDto.builder()
+                .id("1")
+                .name("Time based EU only")
+                .type(PolicyType.TIME_BASED)
+                .description("Allow only in business hours")
+                .configuration("{\"from\":\"08:00\",\"to\":\"18:00\"}")
+                .active(true)
+                .build();
+
+        when(policyQueryService.getAllPolicies()).thenReturn(List.of(policy));
+
+        mockMvc.perform(get("/api/v1/policies"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.statusCode").value(200))
+               .andExpect(jsonPath("$.message").value("Policies retrieved successfully"))
+               .andExpect(jsonPath("$.success").value(true))
+               .andExpect(jsonPath("$.data", hasSize(1)))
+               .andExpect(jsonPath("$.data[0].id").value("1"))
+               .andExpect(jsonPath("$.data[0].name").value("Time based EU only"))
+               .andExpect(jsonPath("$.data[0].type").value("TIME_BASED"))
+               .andExpect(jsonPath("$.data[0].description").value("Allow only in business hours"))
+               .andExpect(jsonPath("$.data[0].configuration").value("{\"from\":\"08:00\",\"to\":\"18:00\"}"))
+               .andExpect(jsonPath("$.data[0].active").value(true));
+
+        verify(policyQueryService, times(1)).getAllPolicies();
+    }
+}
