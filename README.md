@@ -1,5 +1,28 @@
 # Transfer Orchestrator - Policy-Aware Data Transfer System
 
+#Please open the "docs" folder from the project root directory for detailed documentation.
+   1. API Documentation
+   2. API Response format
+   3. Architecture Overview
+   4. Design Decisions
+   5. System Design diagram
+   6. Postman API Collection 
+
+## Postman API Collection is available in the `docs` folder.
+# Use application-dev.yml for development profile.
+# Craete a database named `transferdb` in your local PostgreSQL server before running the application.
+# Change the PostgreSQL username and password in `application-dev.yaml` as per your local setup.
+# Both H2 and PostgreSQL configurations are provided. 
+# By default, the application uses PostgreSQL. For easy installation, switch to H2 by updating the `application-dev.yaml` file. 
+# Used flyway for database migration. The initial schema is in `src/main/resources/db/migration/V1__Initial_Schema.sql`.
+
+## Application Metrics and Monitoring
+# Actuator:
+http://localhost:9090/actuator/health
+# Prometheus:
+http://localhost:9090/actuator/prometheus
+
+
 ## Overview
 
 This is a production-ready implementation of a **Policy-Aware Data Transfer Orchestration System** built on top of Eclipse EDC for Catena-X dataspace compliance. The system manages complex data transfers between multiple EDC connectors while enforcing business policies, ensuring data sovereignty, and maintaining comprehensive audit trails.
@@ -38,10 +61,11 @@ This is a production-ready implementation of a **Policy-Aware Data Transfer Orch
 
 ## Technology Stack
 
-- **Java 17** - LTS version (compatible with your installed JDK)
-- **Spring Boot 3.4.0** - Latest stable framework version
+- **Java 25** - LTS version
+- **Spring Boot 4.0.0 ** - Latest stable framework version
 - **Maven** - Build tool
 - **H2 Database** - In-memory database (easy to switch to PostgreSQL)
+- **PostgresQL** - Recommended for production
 - **Flyway** - Database migration
 - **JUnit 5** - Testing framework
 - **SpringDoc OpenAPI** - API documentation
@@ -125,10 +149,19 @@ The application will start on `http://localhost:9090`
 - **API Base URL**: `http://localhost:9090/api/v1`
 - **Swagger UI**: `http://localhost:9090/swagger-ui.html`
 - **OpenAPI Docs**: `http://localhost:9090/api-docs`
+- **Actuator URL**: `http://localhost:9090/actuator`
+- **Prometheus URL**: `http://localhost:9090/actuator/prometheus`
 - **H2 Console**: `http://localhost:9090/h2-console`
   - JDBC URL: `jdbc:h2:mem:transferdb`
   - Username: `sa`
   - Password: (leave empty)
+- **PostgreSQL**:
+  - JDBC URL: `jdbc:postgresql://localhost:5432/transferdb`
+  - Host: `localhost`
+  - Port: `5432`
+  - Database: `transferdb`
+  - Username: `postgres`
+  - Password: `your-password`
 
 ## Running Tests
 
@@ -271,16 +304,6 @@ The application uses Flyway for database migrations. The initial schema includes
 
 1. **Mock EDC Integration**: The EDC connector client is mocked. In production, this would call actual EDC Management API endpoints.
 
-2. **In-Memory Database**: Uses H2 for simplicity. For production, migrate to PostgreSQL by updating `application.yaml`:
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/transferdb
-    driver-class-name: org.postgresql.Driver
-    username: postgres
-    password: your-password
-```
-
 3. **Async Processing**: Transfer workflows run asynchronously but lack distributed coordination. For production scale, consider adding message queues (Kafka/RabbitMQ).
 
 4. **Time-based Policy**: Currently uses server time. Should use configurable timezone (CET) for Catena-X compliance.
@@ -300,15 +323,8 @@ spring:
 9. **Advanced Policies**: Custom policy DSL, time windows, dynamic limits
 10. **Notifications**: Email/Webhook notifications for transfer events
 
-## Contributing
 
-This is a take-home assignment implementation. For production use, please review and adapt according to your requirements.
 
-## License
-
-Apache 2.0
-
-## Contact
-
-For questions or issues, please contact: support@company.com
+## For questions or issues, please contact: nsu.tonmoy@gmail.com
+## Prepared by: Tonmoy Sikder
 

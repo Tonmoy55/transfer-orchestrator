@@ -110,9 +110,9 @@ COMPLETED/FAILED/CANCELLED
 
 ## 4. Scalability Design
 
-### Decision: Async Processing with Spring @Async
+### Decision: Async Processing with Spring virtual thread
 
-**What**: Transfer workflows execute asynchronously using Spring's `@Async` with ThreadPoolTaskExecutor.
+**What**: Transfer workflows execute asynchronously using virtual thread
 
 **Why**:
 - **Responsiveness**: API returns immediately (202 Accepted)
@@ -283,8 +283,7 @@ COMPLETED/FAILED/CANCELLED
 **What**: YAML configuration with profile support.
 
 **Profiles Planned**:
-- `dev`: H2 database, verbose logging
-- `test`: In-memory, fast startup
+- `dev`: H2 database, PostgreSQL, verbose logging
 - `prod`: PostgreSQL, optimized settings
 
 **Why**:
@@ -424,17 +423,17 @@ COMPLETED/FAILED/CANCELLED
 
 ## Time Spent Breakdown
 
-- **Architecture & Design**: 1 hour
-- **Core Implementation**: 3 hours
+- **Architecture & Design**: 1.5 hour
+- **Core Implementation**: 4 hours
   - Policy Engine: 45 min
-  - Transfer Orchestrator: 1 hour
+  - Transfer Orchestrator: 2 hour
   - EDC Integration: 30 min
   - API Layer: 45 min
 - **Database & Persistence**: 45 min
-- **Testing**: 1 hour
-- **Documentation**: 30 min
+- **Testing**: 1.5 hour
+- **Documentation**: 1 hour
 
-**Total**: ~6 hours
+**Total**: ~9 hours
 
 ## What I'd Do Differently With More Time
 

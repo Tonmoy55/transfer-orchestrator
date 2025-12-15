@@ -362,7 +362,7 @@ COMPLETED  FAILED  CANCELLED
 - Reduces boilerplate code
 - Good performance with proper configuration
 
-### Async Processing (Spring @Async)
+### Async Processing. Used virtual thread
 - Simple implementation for MVP
 - Can be replaced with message queue for production scale
 
