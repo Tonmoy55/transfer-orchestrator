@@ -8,18 +8,18 @@
    5. System Design diagram
    6. Postman API Collection 
 
-## Postman API Collection is available in the `docs` folder.
-# Use application-dev.yml for development profile.
-# Craete a database named `transferdb` in your local PostgreSQL server before running the application.
-# Change the PostgreSQL username and password in `application-dev.yaml` as per your local setup.
-# Both H2 and PostgreSQL configurations are provided. 
-# By default, the application uses PostgreSQL. For easy installation, switch to H2 by updating the `application-dev.yaml` file. 
-# Used flyway for database migration. The initial schema is in `src/main/resources/db/migration/V1__Initial_Schema.sql`.
+ **Postman API Collection is available in the `docs` folder.
+ * Use application-dev.yml for development profile.
+ * Craete a database named `transferdb` in your local PostgreSQL server before running the application.
+ * Change the PostgreSQL username and password in `application-dev.yaml` as per your local setup.
+ * Both H2 and PostgreSQL configurations are provided. 
+ * By default, the application uses PostgreSQL. For easy installation, switch to H2 by updating the `application-dev.yaml` file. 
+ * Used flyway for database migration. The initial schema is in `src/main/resources/db/migration/V1__Initial_Schema.sql`.
 
-## Application Metrics and Monitoring
-# Actuator:
+### Application Metrics and Monitoring
+- Actuator:
 http://localhost:9090/actuator/health
-# Prometheus:
+- Prometheus:
 http://localhost:9090/actuator/prometheus
 
 
@@ -325,6 +325,6 @@ The application uses Flyway for database migrations. The initial schema includes
 
 
 
-## For questions or issues, please contact: nsu.tonmoy@gmail.com
+### For questions or issues, please contact: nsu.tonmoy@gmail.com 
 ## Prepared by: Tonmoy Sikder
 
