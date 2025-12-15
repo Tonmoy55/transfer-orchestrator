@@ -1,5 +1,6 @@
 package com.company.orchestrator.domain.service;
 
+import com.company.orchestrator.config.CacheConfig;
 import com.company.orchestrator.domain.enums.PolicyType;
 import com.company.orchestrator.domain.model.PolicyEvaluationResult;
 import com.company.orchestrator.domain.model.TransferRequest;
@@ -8,6 +9,7 @@ import com.company.orchestrator.infrastructure.persistence.repository.PolicyRepo
 import com.company.orchestrator.infrastructure.policy.interfaces.PolicyEvaluator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -26,11 +28,6 @@ import java.util.stream.Collectors;
 public class PolicyEvaluationService {
 
     private final List<PolicyEvaluator> policyEvaluators;
-    /**
-     * Optional repository for dynamic policy definitions stored in DB.
-     * In unit tests that construct PolicyEvaluationService directly, this
-     * may be null; in that case we fall back to evaluating all evaluators.
-     */
     private final Optional<PolicyRepository> policyRepository;
 
     /**
@@ -151,23 +148,6 @@ public class PolicyEvaluationService {
     }
 
     /**
-     * Lists all available policy types. When a PolicyRepository is present,
-     * this is driven by active policies in the database; otherwise it falls
-     * back to the types exposed by the configured evaluators.
-     */
-    public List<String> getAvailablePolicyTypes() {
-        return policyRepository
-            .map(repo -> repo.findByActiveTrue().stream()
-                .map(PolicyEntity::getType)
-                .map(PolicyType::name)
-                .distinct()
-                .toList())
-            .orElseGet(() -> policyEvaluators.stream()
-                .map(PolicyEvaluator::getPolicyType)
-                .collect(Collectors.toList()));
-    }
-
-    /**
      * Helper to resolve which evaluators should run for evaluateAll().
      * If a PolicyRepository is present, only evaluators whose type is present
      * as an active PolicyEntity.type are returned; otherwise returns
@@ -178,7 +158,7 @@ public class PolicyEvaluationService {
             return policyEvaluators;
         }
 
-        List<PolicyEntity> activePolicies = policyRepository.get().findByActiveTrue();
+        List<PolicyEntity> activePolicies = getActivePoliciesCached();
         if (activePolicies.isEmpty()) {
             log.warn("No active policies found in database; no policies will be evaluated");
             return List.of();
@@ -200,5 +180,33 @@ public class PolicyEvaluationService {
                 return true;
             })
             .toList();
+    }
+
+    /**
+     * Returns active policies from cache when repository is available.
+     * The cache key is a constant because active policies are global, not per-request.
+     */
+    @Cacheable(cacheNames = CacheConfig.ACTIVE_POLICIES_CACHE, key = "'all'", unless = "#result == null")
+    public List<PolicyEntity> getActivePoliciesCached() {
+        return policyRepository
+                .map(PolicyRepository::findByActiveTrue)
+                .orElseGet(List::of);
+    }
+
+    /**
+     * Lists all available policy types. When a PolicyRepository is present,
+     * this is driven by active policies in the database; otherwise it falls
+     * back to the types exposed by the configured evaluators.
+     */
+    public List<String> getAvailablePolicyTypes() {
+        return policyRepository
+            .map(repo -> getActivePoliciesCached().stream()
+                .map(PolicyEntity::getType)
+                .map(PolicyType::name)
+                .distinct()
+                .toList())
+            .orElseGet(() -> policyEvaluators.stream()
+                .map(PolicyEvaluator::getPolicyType)
+                .collect(Collectors.toList()));
     }
 }

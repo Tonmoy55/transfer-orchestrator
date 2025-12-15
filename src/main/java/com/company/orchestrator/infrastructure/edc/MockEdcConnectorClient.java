@@ -20,6 +20,8 @@ public class MockEdcConnectorClient implements EdcConnectorClient {
     private final Map<String, TransferProcessState> transferStates = new ConcurrentHashMap<>();
     private final Map<String, String> agreementIds = new ConcurrentHashMap<>();
 
+
+    //TODO: Mocking now. Real integration will be done later.
     @Override
     public ContractNegotiationResult negotiateContract(ContractOffer offer) {
         log.info("Mock EDC: Negotiating contract for transferId: {}, asset: {}", offer.getTransferId(), offer.getAssetId());
@@ -40,6 +42,7 @@ public class MockEdcConnectorClient implements EdcConnectorClient {
             .build();
     }
 
+    //TODO: Mocking now. Real integration will be done later.
     @Override
     public TransferProcessResult initiateTransfer(String agreementId, TransferRequest request) {
         log.info("Mock EDC: Initiating transfer for transferId: {}, agreement: {}", request.getTransferId(), agreementId);
@@ -56,6 +59,7 @@ public class MockEdcConnectorClient implements EdcConnectorClient {
             .message("Transfer process started successfully")
             .build();
     }
+
 
     @Override
     public TransferProcessState getTransferState(String transferProcessId) {

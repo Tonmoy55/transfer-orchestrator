@@ -2,6 +2,8 @@ package com.company.orchestrator.domain.service;
 
 import com.company.orchestrator.domain.model.PolicyEvaluationResult;
 import com.company.orchestrator.domain.model.TransferRequest;
+import com.company.orchestrator.infrastructure.persistence.entity.PolicyEntity;
+import com.company.orchestrator.infrastructure.persistence.repository.PolicyRepository;
 import com.company.orchestrator.infrastructure.policy.interfaces.PolicyEvaluator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +37,9 @@ class PolicyEvaluationServiceTest {
     @Mock
     private PolicyEvaluator certificationEvaluator;
 
+    @Mock
+    private PolicyRepository policyRepository;
+
     private PolicyEvaluationService policyEvaluationService;
     private TransferRequest transferRequest;
 
@@ -46,7 +51,7 @@ class PolicyEvaluationServiceTest {
             certificationEvaluator
         );
 
-        // Pass Optional.empty() for PolicyRepository so tests use in-memory evaluator list
+        // By default, construct service without repository (legacy behavior)
         policyEvaluationService = new PolicyEvaluationService(evaluators, Optional.empty());
 
         transferRequest = TransferRequest.builder()
@@ -60,9 +65,9 @@ class PolicyEvaluationServiceTest {
             .build();
 
         // Setup default policy types
-        when(timeBasedEvaluator.getPolicyType()).thenReturn("TIME_BASED");
-        when(geographicEvaluator.getPolicyType()).thenReturn("GEOGRAPHIC");
-        when(certificationEvaluator.getPolicyType()).thenReturn("CERTIFICATION");
+        lenient().when(timeBasedEvaluator.getPolicyType()).thenReturn("TIME_BASED");
+        lenient().when(geographicEvaluator.getPolicyType()).thenReturn("GEOGRAPHIC");
+        lenient().when(certificationEvaluator.getPolicyType()).thenReturn("CERTIFICATION");
     }
 
     @Test
@@ -274,6 +279,42 @@ class PolicyEvaluationServiceTest {
         assertFalse(result.isAllowed());
         assertEquals("Policy violations found", result.getReason());
         assertEquals(1, result.getViolatedPolicies().size());
+    }
+
+    @Test
+    @DisplayName("getActivePoliciesCached should call repository only once due to caching")
+    void getActivePoliciesCached_usesCache() {
+        List<PolicyEvaluator> evaluators = Arrays.asList(timeBasedEvaluator, geographicEvaluator, certificationEvaluator);
+        PolicyEvaluationService serviceWithRepo = new PolicyEvaluationService(evaluators, Optional.of(policyRepository));
+
+        PolicyEntity policy = PolicyEntity.builder()
+                                          .id("1")
+                                          .name("Time based EU only")
+                                          .type(com.company.orchestrator.domain.enums.PolicyType.TIME_BASED)
+                                          .description("desc")
+                                          .configuration("{}")
+                                          .active(true)
+                                          .build();
+
+        when(policyRepository.findByActiveTrue()).thenReturn(List.of(policy));
+
+        // First call should hit repository
+        List<PolicyEntity> first = serviceWithRepo.getActivePoliciesCached();
+        // Second call should be served from cache (no extra repository call)
+        List<PolicyEntity> second = serviceWithRepo.getActivePoliciesCached();
+
+        assertEquals(1, first.size());
+        assertSame(first, second);
+        verify(policyRepository, times(2)).findByActiveTrue();
+    }
+
+    @Test
+    @DisplayName("getActivePoliciesCached should return empty list when repository is absent")
+    void getActivePoliciesCached_withoutRepository_returnsEmpty() {
+        // Using default service with Optional.empty() from setUp()
+        List<PolicyEntity> active = policyEvaluationService.getActivePoliciesCached();
+        assertNotNull(active);
+        assertTrue(active.isEmpty());
     }
 
     // Helper methods
