@@ -1,9 +1,8 @@
-# Server Configuration
 server:
-  port: 9090
+  port: ${SERVER_PORT:9090}
 
 spring:
   application:
-    name: transfer-orchestrator
+    name: ${APPLICATION_NAME:transfer-orchestrator}
   profiles:
     active: ${ACTIVE_PROFILE:dev}
