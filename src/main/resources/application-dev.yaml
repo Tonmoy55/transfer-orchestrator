@@ -1,0 +1,68 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        use_sql_comments: ${HIBERNATE_USE_SQL_COMMENTS:true}
+        jdbc:
+          batch_size: ${HIBERNATE_JDBC_BATCH_SIZE:20}
+        order_inserts: ${HIBERNATE_ORDER_INSERTS:true}
+        order_updates: ${HIBERNATE_ORDER_UPDATES:true}
+
+  # H2 Console (disabled when using PostgreSQL)
+  h2:
+    console:
+      enabled: ${H2_CONSOLE_ENABLED:false}
+      path: ${H2_CONSOLE_PATH:/h2-console}
+
+# Datasource H2 (default)
+#  datasource:
+#    url: ${DATASOURCE_URL:jdbc:h2:mem:transferdb}
+#    driver-class-name: ${DATASOURCE_DRIVER:org.h2.Driver}
+#    username: ${DATASOURCE_USERNAME:sa}
+#    password: ${DATASOURCE_PASSWORD:}
+
+  # Datasource: switch to PostgreSQL
+  datasource:
+    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/transferdb}
+    driver-class-name: ${DATASOURCE_DRIVER:org.postgresql.Driver}
+    username: ${DATASOURCE_USERNAME:postgres}
+    password: ${DATASOURCE_PASSWORD:admin}
+
+  # Flyway
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
+
+# Logging
+logging:
+  level:
+    com.company.orchestrator: ${LOG_LEVEL_APP:INFO}
+    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+    org.hibernate: ${LOG_LEVEL_HIBERNATE:WARN}
+
+# SpringDoc OpenAPI
+springdoc:
+  api-docs:
+    path: ${SPRINGDOC_API_DOCS_PATH:/api-docs}
+  swagger-ui:
+    path: ${SPRINGDOC_SWAGGER_UI_PATH:/swagger-ui.html}
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
+
+# Actuator / Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_EXPOSE:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when_authorized}
+  metrics:
+    enable:
+      http.server.requests: ${METRICS_HTTP_ENABLED:true}
+      spring.batch: ${METRICS_SPRING_BATCH_ENABLED:false}

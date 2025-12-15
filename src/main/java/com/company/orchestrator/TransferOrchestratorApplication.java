@@ -6,9 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class TransferOrchestratorApplication {
 
-	public static void main(String[] args) {
+	static void main(String[] args) {
 		SpringApplication.run(TransferOrchestratorApplication.class, args);
 		System.out.println("Application is Running !!");
 	}
-
 }
