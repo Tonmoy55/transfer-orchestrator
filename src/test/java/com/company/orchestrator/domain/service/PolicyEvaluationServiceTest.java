@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,7 +46,8 @@ class PolicyEvaluationServiceTest {
             certificationEvaluator
         );
 
-        policyEvaluationService = new PolicyEvaluationService(evaluators);
+        // Pass Optional.empty() for PolicyRepository so tests use in-memory evaluator list
+        policyEvaluationService = new PolicyEvaluationService(evaluators, Optional.empty());
 
         transferRequest = TransferRequest.builder()
             .consumerId("consumer-1")
@@ -212,7 +214,7 @@ class PolicyEvaluationServiceTest {
         lenient().when(geographicEvaluator.getPolicyType()).thenReturn("GEOGRAPHIC");
         lenient().when(certificationEvaluator.getPolicyType()).thenReturn("CERTIFICATION");
 
-        PolicyEvaluationService emptyService = new PolicyEvaluationService(Collections.emptyList());
+        PolicyEvaluationService emptyService = new PolicyEvaluationService(Collections.emptyList(),  Optional.empty());
 
         List<String> policyTypes = emptyService.getAvailablePolicyTypes();
 
@@ -228,7 +230,7 @@ class PolicyEvaluationServiceTest {
         lenient().when(geographicEvaluator.getPolicyType()).thenReturn("GEOGRAPHIC");
         lenient().when(certificationEvaluator.getPolicyType()).thenReturn("CERTIFICATION");
 
-        PolicyEvaluationService emptyService = new PolicyEvaluationService(Collections.emptyList());
+        PolicyEvaluationService emptyService = new PolicyEvaluationService(Collections.emptyList(),  Optional.empty());
 
         PolicyEvaluationResult result = emptyService.evaluateAll(transferRequest);
 
